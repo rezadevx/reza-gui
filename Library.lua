@@ -1,4 +1,4 @@
-local BASE = "https://raw.githubusercontent.com/rezadevx/reza-gui/main/rezalib/"
+local BASE = "https://raw.githubusercontent.com/rezadevx/reza-gui/main/"
 
 local function fetch(path)
     return loadstring(game:HttpGet(BASE .. path))()
