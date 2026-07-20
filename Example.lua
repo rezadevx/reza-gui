@@ -7,7 +7,7 @@
 
 -- ── Load Library ──────────────────────────────────────────────────────────────
 local Library = loadstring(game:HttpGet(
-    "https://raw.githubusercontent.com/rezadevx/rezadevx-premium/main/rezalib/Library.lua"
+    "https://raw.githubusercontent.com/rezadevx/reza-gui/main/Library.lua"
 ))()
 
 -- ── Create Window ─────────────────────────────────────────────────────────────
@@ -204,7 +204,7 @@ ConfigSection:Button({
 
 ConfigSection:Paragraph({
     Name    = "About",
-    Content = "RezaLib v1.0.0 — A professional Roblox GUI library.\nSupports: Synapse X, KRNL, Fluxus, Electron, Celery, Solara and more.\n\nGitHub: github.com/rezadevx/rezadevx-premium",
+    Content = "RezaLib v1.0.0 — A professional Roblox GUI library.\nSupports: Synapse X, KRNL, Fluxus, Electron, Celery, Solara and more.\n\nGitHub: github.com/rezadevx/reza-gui",
 })
 
 -- ── Startup notification ───────────────────────────────────────────────────────
