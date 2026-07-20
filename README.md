@@ -24,7 +24,7 @@
 
 ```lua
 local Library = loadstring(game:HttpGet(
-    "https://raw.githubusercontent.com/rezadevx/rezadevx-premium/main/rezalib/Library.lua"
+    "https://raw.githubusercontent.com/rezadevx/reza-gui/main/Library.lua"
 ))()
 
 local Window = Library:Window({
