@@ -1,37 +1,100 @@
 return function(Library, Svc, Theme, U, elemAttachers)
     local UserInputService = Svc.UserInputService
 
-    local WIN_W     = 580
-    local WIN_H     = 420
-    local SIDEBAR_W = 160
-    local TOPBAR_H  = 38
+    -- ─── Base Design Dimensions (Desktop) ────────────────────────────────────
+    local BASE = {
+        WIN_W    = 470,
+        WIN_H    = 400,
+        SIDEBAR  = 160,
+        TOPBAR_H = 38,
+        HDR_H    = 72,
+        TAB_H    = 34,
+        TAB_TS   = 13,
+        TITLE_TS = 15,
+        SUB_TS   = 11,
+        PAD      = 14,
+        BTN_SZ   = 14,
+        BTN_GAP  = 20,
+        SEC_HDR  = 38,
+        CORNER   = 10,
+        SEC_COR  = 8,
+    }
 
+    -- ─── Responsive Config Builder ────────────────────────────────────────────
+    -- Deteksi mobile: touch enabled tanpa mouse (perangkat sentuh murni)
+    -- Lalu scale semua dimensi proporsional terhadap ukuran layar aktual.
+    local function buildConfig()
+        local isMobile = UserInputService.TouchEnabled
+                      and not UserInputService.MouseEnabled
+
+        if not isMobile then
+            -- Desktop: kembalikan nilai base persis
+            local D = {}
+            for k, v in pairs(BASE) do D[k] = v end
+            D.isMobile = false
+            return D
+        end
+
+        -- Hitung scale factor dari viewport vs. desain base
+        local vp    = workspace.CurrentCamera.ViewportSize
+        local scale = math.clamp(
+            math.min(vp.X / BASE.WIN_W, vp.Y / BASE.WIN_H) * 0.90,
+            0.62, -- minimum 62% agar elemen tetap terbaca
+            1.00
+        )
+
+        local function sc(v) return math.round(v * scale) end
+
+        return {
+            WIN_W    = sc(BASE.WIN_W),
+            WIN_H    = sc(BASE.WIN_H),
+            SIDEBAR  = sc(BASE.SIDEBAR),
+            TOPBAR_H = sc(BASE.TOPBAR_H),
+            HDR_H    = sc(BASE.HDR_H),
+            TAB_H    = sc(BASE.TAB_H),
+            TAB_TS   = sc(BASE.TAB_TS),
+            TITLE_TS = sc(BASE.TITLE_TS),
+            SUB_TS   = sc(BASE.SUB_TS),
+            PAD      = sc(BASE.PAD),
+            BTN_SZ   = math.max(sc(BASE.BTN_SZ), 10), -- minimum tap target
+            BTN_GAP  = sc(BASE.BTN_GAP),
+            SEC_HDR  = sc(BASE.SEC_HDR),
+            CORNER   = sc(BASE.CORNER),
+            SEC_COR  = sc(BASE.SEC_COR),
+            isMobile = true,
+        }
+    end
+
+    -- ─── Internal Helpers ─────────────────────────────────────────────────────
     local function attachElements(Sec, items)
         for _, attach in ipairs(elemAttachers) do
             attach(Sec, items)
         end
     end
 
+    -- ─── Window Constructor ───────────────────────────────────────────────────
     function Library:Window(cfg)
         cfg = cfg or {}
         local title     = cfg.Title    or "RezaLib"
         local subtitle  = cfg.SubTitle or ""
         local toggleKey = cfg.KeyBind  or Enum.KeyCode.RightShift
 
+        local D   = buildConfig()
         local gui = self:_gui_root()
 
+        -- ── Root Frame ────────────────────────────────────────────────────────
         local root = U.New("Frame", {
             Name             = "Window",
             AnchorPoint      = Vector2.new(0.5, 0.5),
             BackgroundColor3 = Theme.Window,
             BorderSizePixel  = 0,
             Position         = UDim2.new(0.5, 0, 0.5, 0),
-            Size             = UDim2.new(0, WIN_W, 0, WIN_H),
+            Size             = UDim2.new(0, D.WIN_W, 0, D.WIN_H),
             ClipsDescendants = true,
             ZIndex           = 10,
             Parent           = gui,
         })
-        U.Corner(root, 10)
+        U.Corner(root, D.CORNER)
         U.Stroke(root, Theme.Border, 1)
         U.Shadow(root, 44, 0.44)
 
@@ -44,18 +107,18 @@ return function(Library, Svc, Theme, U, elemAttachers)
             Parent   = root,
         })
 
-        -- Sidebar (kolom kiri)
+        -- ── Sidebar ───────────────────────────────────────────────────────────
         local sidebar = U.New("Frame", {
             Name             = "Sidebar",
             BackgroundColor3 = Theme.Sidebar,
             BorderSizePixel  = 0,
             Position         = UDim2.new(0, 0, 0, 0),
-            Size             = UDim2.new(0, SIDEBAR_W, 1, 0),
+            Size             = UDim2.new(0, D.SIDEBAR, 1, 0),
             ZIndex           = 11,
             Parent           = root,
         })
 
-        -- Garis kanan sidebar
+        -- Garis pembatas kanan sidebar
         U.New("Frame", {
             BackgroundColor3 = Theme.Border,
             BorderSizePixel  = 0,
@@ -65,22 +128,32 @@ return function(Library, Svc, Theme, U, elemAttachers)
             Parent           = sidebar,
         })
 
-        -- Header sidebar (judul + subtitle, juga drag handle)
+        -- ── Sidebar Header (judul + subtitle + drag handle) ───────────────────
         local sideHeader = U.New("Frame", {
             Name                   = "Header",
             BackgroundTransparency = 1,
-            Size                   = UDim2.new(1, 0, 0, 72),
+            Size                   = UDim2.new(1, 0, 0, D.HDR_H),
             ZIndex                 = 12,
             Parent                 = sidebar,
         })
 
+        -- Aksen vertikal kiri judul
+        U.New("Frame", {
+            BackgroundColor3 = Theme.Accent,
+            BorderSizePixel  = 0,
+            Position         = UDim2.new(0, 10, 0, 13),
+            Size             = UDim2.new(0, 3, 0, D.TITLE_TS + 2),
+            ZIndex           = 14,
+            Parent           = sideHeader,
+        })
+
         U.New("TextLabel", {
             BackgroundTransparency = 1,
-            Position       = UDim2.new(0, 14, 0, 12),
-            Size           = UDim2.new(1, -14, 0, 22),
+            Position       = UDim2.new(0, 18, 0, 12),
+            Size           = UDim2.new(1, -18, 0, D.TITLE_TS + 6),
             Text           = title,
             Font           = Enum.Font.GothamBold,
-            TextSize       = 15,
+            TextSize       = D.TITLE_TS,
             TextColor3     = Theme.TextPrimary,
             TextXAlignment = Enum.TextXAlignment.Left,
             ZIndex         = 13,
@@ -90,11 +163,11 @@ return function(Library, Svc, Theme, U, elemAttachers)
         if subtitle ~= "" then
             U.New("TextLabel", {
                 BackgroundTransparency = 1,
-                Position       = UDim2.new(0, 14, 0, 36),
-                Size           = UDim2.new(1, -14, 0, 14),
+                Position       = UDim2.new(0, 18, 0, 12 + D.TITLE_TS + 8),
+                Size           = UDim2.new(1, -18, 0, D.SUB_TS + 4),
                 Text           = subtitle,
                 Font           = Enum.Font.Gotham,
-                TextSize       = 11,
+                TextSize       = D.SUB_TS,
                 TextColor3     = Theme.TextDim,
                 TextXAlignment = Enum.TextXAlignment.Left,
                 ZIndex         = 13,
@@ -102,23 +175,23 @@ return function(Library, Svc, Theme, U, elemAttachers)
             })
         end
 
-        -- Garis bawah header sidebar
+        -- Garis bawah header
         U.New("Frame", {
             BackgroundColor3 = Theme.Border,
             BorderSizePixel  = 0,
-            Position         = UDim2.new(0, 12, 1, -1),
-            Size             = UDim2.new(1, -24, 0, 1),
+            Position         = UDim2.new(0, 10, 1, -1),
+            Size             = UDim2.new(1, -20, 0, 1),
             ZIndex           = 12,
             Parent           = sideHeader,
         })
 
-        -- Daftar tab (scrollable, mulai di bawah header)
+        -- ── Tab List (scrollable) ─────────────────────────────────────────────
         local tabList = U.New("ScrollingFrame", {
             Name                   = "TabList",
             BackgroundTransparency = 1,
             BorderSizePixel        = 0,
-            Position               = UDim2.new(0, 0, 0, 72),
-            Size                   = UDim2.new(1, 0, 1, -80),
+            Position               = UDim2.new(0, 0, 0, D.HDR_H),
+            Size                   = UDim2.new(1, 0, 1, -(D.HDR_H + 8)),
             ScrollBarThickness     = 2,
             ScrollBarImageColor3   = Theme.Scrollbar,
             CanvasSize             = UDim2.new(0, 0, 0, 0),
@@ -130,26 +203,25 @@ return function(Library, Svc, Theme, U, elemAttachers)
         U.List(tabList, 2)
         U.Padding(tabList, 6, 8, 6, 8)
 
-        -- Area konten (kanan sidebar)
+        -- ── Content Area (kanan sidebar) ──────────────────────────────────────
         local contentArea = U.New("Frame", {
             Name                   = "Content",
             BackgroundTransparency = 1,
-            Position               = UDim2.new(0, SIDEBAR_W, 0, 0),
-            Size                   = UDim2.new(1, -SIDEBAR_W, 1, 0),
+            Position               = UDim2.new(0, D.SIDEBAR, 0, 0),
+            Size                   = UDim2.new(1, -D.SIDEBAR, 1, 0),
             ZIndex                 = 11,
             Parent                 = root,
         })
 
-        -- Top bar khusus tombol kontrol (tidak menimpa halaman)
+        -- ── Top Bar (tombol kontrol) ───────────────────────────────────────────
         local topBar = U.New("Frame", {
             Name                   = "TopBar",
             BackgroundTransparency = 1,
-            Size                   = UDim2.new(1, 0, 0, TOPBAR_H),
+            Size                   = UDim2.new(1, 0, 0, D.TOPBAR_H),
             ZIndex                 = 20,
             Parent                 = contentArea,
         })
 
-        -- Garis bawah top bar
         U.New("Frame", {
             BackgroundColor3 = Theme.Border,
             BorderSizePixel  = 0,
@@ -165,7 +237,7 @@ return function(Library, Svc, Theme, U, elemAttachers)
             BackgroundColor3       = Color3.fromRGB(255, 72, 72),
             BackgroundTransparency = 0.25,
             Position               = UDim2.new(1, -12, 0.5, 0),
-            Size                   = UDim2.new(0, 14, 0, 14),
+            Size                   = UDim2.new(0, D.BTN_SZ, 0, D.BTN_SZ),
             Text                   = "",
             ZIndex                 = 22,
             Parent                 = topBar,
@@ -177,51 +249,71 @@ return function(Library, Svc, Theme, U, elemAttachers)
             AnchorPoint            = Vector2.new(1, 0.5),
             BackgroundColor3       = Color3.fromRGB(255, 196, 0),
             BackgroundTransparency = 0.25,
-            Position               = UDim2.new(1, -32, 0.5, 0),
-            Size                   = UDim2.new(0, 14, 0, 14),
+            Position               = UDim2.new(1, -(12 + D.BTN_GAP), 0.5, 0),
+            Size                   = UDim2.new(0, D.BTN_SZ, 0, D.BTN_SZ),
             Text                   = "",
             ZIndex                 = 22,
             Parent                 = topBar,
         })
         U.Corner(btnMin, 999)
 
-        -- Pages (konten tab, dimulai TEPAT di bawah topBar, tidak ada tumpang tindih)
+        -- ── Pages Container (konten tab, di bawah topBar) ─────────────────────
         local pages = U.New("Frame", {
             Name                   = "Pages",
             BackgroundTransparency = 1,
-            Position               = UDim2.new(0, 0, 0, TOPBAR_H),
-            Size                   = UDim2.new(1, 0, 1, -TOPBAR_H),
+            Position               = UDim2.new(0, 0, 0, D.TOPBAR_H),
+            Size                   = UDim2.new(1, 0, 1, -D.TOPBAR_H),
             ClipsDescendants       = true,
             ZIndex                 = 12,
             Parent                 = contentArea,
         })
 
-        -- Drag window via sidebar header
-        local dragging, dragStart, startPos = false, nil, nil
+        -- ── Drag System (Mouse + Touch) ───────────────────────────────────────
+        local dragging  = false
+        local dragStart = nil
+        local startPos  = nil
+
+        local function onDragBegin(pos)
+            dragging  = true
+            dragStart = pos
+            startPos  = root.Position
+        end
+
+        local function onDragMove(pos)
+            if not dragging then return end
+            local delta = pos - dragStart
+            root.Position = UDim2.new(
+                startPos.X.Scale, startPos.X.Offset + delta.X,
+                startPos.Y.Scale, startPos.Y.Offset + delta.Y
+            )
+        end
+
+        local function onDragEnd()
+            dragging = false
+        end
 
         self:_connect(sideHeader.InputBegan, function(inp)
-            if inp.UserInputType == Enum.UserInputType.MouseButton1 then
-                dragging  = true
-                dragStart = inp.Position
-                startPos  = root.Position
-            end
-        end)
-        self:_connect(UserInputService.InputChanged, function(inp)
-            if dragging and inp.UserInputType == Enum.UserInputType.MouseMovement then
-                local d = inp.Position - dragStart
-                root.Position = UDim2.new(
-                    startPos.X.Scale, startPos.X.Offset + d.X,
-                    startPos.Y.Scale, startPos.Y.Offset + d.Y
-                )
-            end
-        end)
-        self:_connect(UserInputService.InputEnded, function(inp)
-            if inp.UserInputType == Enum.UserInputType.MouseButton1 then
-                dragging = false
+            if inp.UserInputType == Enum.UserInputType.MouseButton1
+            or inp.UserInputType == Enum.UserInputType.Touch then
+                onDragBegin(inp.Position)
             end
         end)
 
-        -- Toggle visibility via keybind
+        self:_connect(UserInputService.InputChanged, function(inp)
+            if inp.UserInputType == Enum.UserInputType.MouseMovement
+            or inp.UserInputType == Enum.UserInputType.Touch then
+                onDragMove(inp.Position)
+            end
+        end)
+
+        self:_connect(UserInputService.InputEnded, function(inp)
+            if inp.UserInputType == Enum.UserInputType.MouseButton1
+            or inp.UserInputType == Enum.UserInputType.Touch then
+                onDragEnd()
+            end
+        end)
+
+        -- ── Toggle Visibility (keyboard) ──────────────────────────────────────
         local uiVisible = true
         self:_connect(UserInputService.InputBegan, function(inp, processed)
             if processed then return end
@@ -229,31 +321,35 @@ return function(Library, Svc, Theme, U, elemAttachers)
                 uiVisible = not uiVisible
                 U.Tween(root, {
                     Size = uiVisible
-                        and UDim2.new(0, WIN_W, 0, WIN_H)
-                        or  UDim2.new(0, WIN_W, 0, 0),
+                        and UDim2.new(0, D.WIN_W, 0, D.WIN_H)
+                        or  UDim2.new(0, D.WIN_W, 0, 0),
                     BackgroundTransparency = uiVisible and 0 or 1,
                 }, 0.24)
             end
         end)
 
-        -- Tombol close: animasi tutup lalu destroy
+        -- ── Close Button ──────────────────────────────────────────────────────
         btnClose.MouseButton1Click:Connect(function()
-            U.Tween(root, { Size = UDim2.new(0, WIN_W, 0, 0), BackgroundTransparency = 1 }, 0.2)
+            U.Tween(root, {
+                Size                   = UDim2.new(0, D.WIN_W, 0, 0),
+                BackgroundTransparency = 1,
+            }, 0.2)
             task.wait(0.25)
             pcall(function() root:Destroy() end)
         end)
 
-        -- Tombol minimize: toggle tinggi window
+        -- ── Minimize Button ───────────────────────────────────────────────────
         local minimized = false
         btnMin.MouseButton1Click:Connect(function()
             minimized = not minimized
             U.Tween(root, {
                 Size = minimized
-                    and UDim2.new(0, WIN_W, 0, TOPBAR_H)
-                    or  UDim2.new(0, WIN_W, 0, WIN_H),
+                    and UDim2.new(0, D.WIN_W, 0, D.TOPBAR_H)
+                    or  UDim2.new(0, D.WIN_W, 0, D.WIN_H),
             }, 0.22)
         end)
 
+        -- Hover effect tombol kontrol
         for _, b in ipairs({ btnClose, btnMin }) do
             b.MouseEnter:Connect(function()
                 U.Tween(b, { BackgroundTransparency = 0 }, 0.12)
@@ -263,6 +359,7 @@ return function(Library, Svc, Theme, U, elemAttachers)
             end)
         end
 
+        -- ── Window Object ─────────────────────────────────────────────────────
         local Win = {}
         Win._tabs      = {}
         Win._activeTab = nil
@@ -277,7 +374,7 @@ return function(Library, Svc, Theme, U, elemAttachers)
                 Name                   = name,
                 BackgroundColor3       = Theme.Surface,
                 BackgroundTransparency = 0,
-                Size                   = UDim2.new(1, 0, 0, 34),
+                Size                   = UDim2.new(1, 0, 0, D.TAB_H),
                 Text                   = "",
                 ZIndex                 = 14,
                 Parent                 = tabList,
@@ -301,14 +398,14 @@ return function(Library, Svc, Theme, U, elemAttachers)
                 Size           = UDim2.new(1, -14, 1, 0),
                 Text           = name,
                 Font           = Enum.Font.Gotham,
-                TextSize       = 13,
+                TextSize       = D.TAB_TS,
                 TextColor3     = Theme.TextSecond,
                 TextXAlignment = Enum.TextXAlignment.Left,
                 ZIndex         = 15,
                 Parent         = btn,
             })
 
-            -- Halaman konten tab (scrollable, memenuhi pages frame)
+            -- Halaman konten tab (scrollable)
             local page = U.New("ScrollingFrame", {
                 Name                   = name .. "_Page",
                 BackgroundTransparency = 1,
@@ -325,7 +422,7 @@ return function(Library, Svc, Theme, U, elemAttachers)
                 Parent                 = pages,
             })
             U.List(page, 6)
-            U.Padding(page, 14, 14, 14, 14)
+            U.Padding(page, D.PAD, D.PAD, D.PAD, D.PAD)
 
             local tabObj = {
                 _btn       = btn,
@@ -337,9 +434,9 @@ return function(Library, Svc, Theme, U, elemAttachers)
             local function activate()
                 for _, t in ipairs(Win._tabs) do
                     t._page.Visible = false
-                    U.Tween(t._btn,       { BackgroundColor3 = Theme.Surface },  0.15)
-                    U.Tween(t._label,     { TextColor3 = Theme.TextSecond },     0.15)
-                    U.Tween(t._indicator, { BackgroundTransparency = 1 },        0.15)
+                    U.Tween(t._btn,       { BackgroundColor3 = Theme.Surface }, 0.15)
+                    U.Tween(t._label,     { TextColor3 = Theme.TextSecond },    0.15)
+                    U.Tween(t._indicator, { BackgroundTransparency = 1 },       0.15)
                     t._label.Font = Enum.Font.Gotham
                 end
                 page.Visible = true
@@ -366,6 +463,7 @@ return function(Library, Svc, Theme, U, elemAttachers)
             table.insert(Win._tabs, tabObj)
             if #Win._tabs == 1 then activate() end
 
+            -- ── Section Constructor ────────────────────────────────────────────
             function tabObj:Section(scfg)
                 scfg = scfg or {}
                 local sname = scfg.Name or ""
@@ -378,7 +476,7 @@ return function(Library, Svc, Theme, U, elemAttachers)
                     ZIndex           = 14,
                     Parent           = page,
                 })
-                U.Corner(container, 8)
+                U.Corner(container, D.SEC_COR)
                 U.Stroke(container, Theme.Border, 1)
 
                 local hasHeader = sname ~= ""
@@ -386,11 +484,11 @@ return function(Library, Svc, Theme, U, elemAttachers)
                 if hasHeader then
                     local hdr = U.New("Frame", {
                         BackgroundTransparency = 1,
-                        Size   = UDim2.new(1, 0, 0, 38),
+                        Size   = UDim2.new(1, 0, 0, D.SEC_HDR),
                         ZIndex = 15,
                         Parent = container,
                     })
-                    -- Aksen vertikal di sebelah kiri teks header
+                    -- Aksen vertikal kiri
                     U.New("Frame", {
                         BackgroundColor3 = Theme.Accent,
                         BorderSizePixel  = 0,
@@ -425,7 +523,7 @@ return function(Library, Svc, Theme, U, elemAttachers)
                 local items = U.New("Frame", {
                     Name                   = "Items",
                     BackgroundTransparency = 1,
-                    Position               = UDim2.new(0, 0, 0, hasHeader and 38 or 0),
+                    Position               = UDim2.new(0, 0, 0, hasHeader and D.SEC_HDR or 0),
                     Size                   = UDim2.new(1, 0, 0, 0),
                     AutomaticSize          = Enum.AutomaticSize.Y,
                     ZIndex                 = 15,
